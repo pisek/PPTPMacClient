@@ -1,6 +1,7 @@
 package sample;
 
 import javafx.application.Application;
+import javafx.event.Event;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -131,6 +132,7 @@ public class Main extends Application {
         }
 
         private boolean checkStatus() {
+            // do shell script "ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}" with administrator privileges
             // TODO
             return false;
         }
@@ -142,7 +144,7 @@ public class Main extends Application {
         readConfig();
 
         GridPane root = new GridPane();
-        button.addEventHandler(MouseEvent.MOUSE_CLICKED, e -> handleConnection());
+        button.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleConnection);
         root.addRow(0, new Label("Server: "), serverName);
         root.addRow(1, new Label("Username: "), username);
         root.addRow(2, new Label("Password: "), password);
@@ -173,16 +175,32 @@ public class Main extends Application {
         }
     }
 
-    private void handleConnection() {
-        disableFields();
+    private void handleConnection(Event e) {
+        disableFields(true);
         String config = genrateConfig();
         saveConfig(config);
 
         connect();
+
+        button.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleDisconnection);
+    }
+
+    private void handleDisconnection(Event e) {
+        disconnect();
+
+        disableFields(false);
+
+        button.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleConnection);
     }
 
     private void connect() {
         // TODO
+        // do shell script "exec pppd call pptp >/dev/null 2>&1 &" with administrator privileges
+    }
+
+    private void disconnect() {
+        // TODO
+        // do shell script "exec kill -HUP `cat /var/run/ppp0.pid` >/dev/null 2>&1 &" with administrator privileges
     }
 
     private void saveConfig(String config) {
@@ -194,10 +212,10 @@ public class Main extends Application {
         }
     }
 
-    private void disableFields() {
-        serverName.setDisable(true);
-        username.setDisable(true);
-        password.setDisable(true);
+    private void disableFields(boolean setting) {
+        serverName.setDisable(setting);
+        username.setDisable(setting);
+        password.setDisable(setting);
     }
 
     private String genrateConfig() {

@@ -3,12 +3,15 @@ package sample;
 import javafx.application.Application;
 import javafx.event.Event;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.GridPane;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.io.*;
@@ -19,7 +22,8 @@ import java.util.List;
 
 public class Main extends Application {
 
-    private static final String CONFIG_PATH = "/etc/ppp/peers/pptp";
+//    private static final String CONFIG_PATH = "/etc/ppp/peers/pptp";
+    private static final String CONFIG_PATH = "C:\\TEMP\\test.txt";
     private static final String LABEL_CONNECTED = "Connected";
     private static final String LABEL_DISCONNECTED = "Disconnected";
 
@@ -114,6 +118,11 @@ public class Main extends Application {
     private Button button = new Button("Connect");
 
     private Label statusLabel = new Label("Disconnected");
+    private Canvas led = new Canvas(20.0, 20.0) {{
+        GraphicsContext gc = this.getGraphicsContext2D();
+        gc.setFill(Color.RED);
+        gc.fillOval(0,0, getWidth(), getHeight());
+    }};
     private boolean connected = false;
     private Runnable statusChecker = new Runnable() {
         @Override
@@ -121,6 +130,10 @@ public class Main extends Application {
             while (true) {
                 connected = checkStatus();
                 statusLabel.setText(connected ? LABEL_CONNECTED : LABEL_DISCONNECTED);
+                GraphicsContext gc = led.getGraphicsContext2D();
+                gc.setFill(connected ? Color.GREEN : Color.RED);
+                gc.fillOval(0,0, led.getWidth(), led.getHeight());
+
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -146,11 +159,11 @@ public class Main extends Application {
         root.addRow(0, new Label("Server: "), serverName);
         root.addRow(1, new Label("Username: "), username);
         root.addRow(2, new Label("Password: "), password);
-        root.addRow(3, button);
+        root.add(button, 1, 3);
 
-        root.addRow(4, new Label("Status: "), statusLabel);
+        root.addRow(4, new Label("Status: "), new GridPane() {{addRow(0, led, statusLabel);}});
         primaryStage.setTitle("PPTP Mac Client");
-        primaryStage.setScene(new Scene(root, 300, 275));
+        primaryStage.setScene(new Scene(root, 250, 150));
         primaryStage.show();
     }
 
@@ -192,13 +205,19 @@ public class Main extends Application {
     }
 
     private void connect() {
-        // TODO
-        // do shell script "exec pppd call pptp >/dev/null 2>&1 &" with administrator privileges
+        try {
+            Runtime.getRuntime().exec("osascript -e \"do shell script \\\"exec pppd call pptp >/dev/null 2>&1 &\\\" with administrator privileges\"");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void disconnect() {
-        // TODO
-        // do shell script "exec kill -HUP `cat /var/run/ppp0.pid` >/dev/null 2>&1 &" with administrator privileges
+        try {
+            Runtime.getRuntime().exec("osascript -e \"do shell script \\\"exec kill -HUP `cat /var/run/ppp0.pid` >/dev/null 2>&1 &\\\" with administrator privileges\"");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void saveConfig(String config) {

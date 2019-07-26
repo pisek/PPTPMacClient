@@ -19,8 +19,7 @@ import java.util.List;
 
 public class Main extends Application {
 
-//    private static final String CONFIG_PATH = "/etc/ppp/peers/pptp";
-    private static final String CONFIG_PATH = "C:\\Users\\xxbcz\\Documents\\test.txt";
+    private static final String CONFIG_PATH = "/etc/ppp/peers/pptp";
     private static final String LABEL_CONNECTED = "Connected";
     private static final String LABEL_DISCONNECTED = "Disconnected";
 

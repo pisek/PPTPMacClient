@@ -14,14 +14,15 @@ import javafx.stage.Stage;
 
 import java.io.*;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.List;
 
 public class Main extends Application {
 
-//    private static final String CONFIG_PATH = "/etc/ppp/peers/pptp";
-    private static final String CONFIG_PATH = "C:\\TEMP\\test.txt";
+    private static final String CONFIG_PATH = "/etc/ppp/peers/pptp";
+//    private static final String CONFIG_PATH = "C:\\TEMP\\test.txt";
     private static final String LABEL_CONNECTED = "Connected";
     private static final String LABEL_DISCONNECTED = "Disconnected";
 
@@ -79,11 +80,17 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) throws Exception {
-        if (false) {
-            elevate();
-        } else {
-            launch(args);
-        }
+        Runnable sc = new Main().statusChecker;
+        Class<? extends Runnable> aClass = sc.getClass();
+        Method checkStatus = aClass.getDeclaredMethod("checkStatus");
+        checkStatus.setAccessible(true);
+        checkStatus.invoke(sc);
+//        if (!new File(CONFIG_PATH).canWrite()) {
+//            elevate();
+//            System.exit(0);
+//        } else {
+//            launch(args);
+//        }
     }
 
     private static void elevate() throws IOException, URISyntaxException {
@@ -105,9 +112,10 @@ public class Main extends Application {
         writer.close();
         elevator.setExecutable(true);
 
-        Runtime.getRuntime().exec(String.format("%s -cp %s Main",
+        Runtime.getRuntime().exec(String.format("%s -cp %s %s",
                 elevator.getPath(),
-                Main.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath()));
+                Main.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath(),
+                Main.class.getName()));
     }
 
     private TextField serverName = new TextField();
@@ -122,7 +130,7 @@ public class Main extends Application {
         gc.fillOval(0,0, getWidth(), getHeight());
     }};
     private boolean connected = false;
-    private Runnable statusChecker = new Runnable() {
+    Runnable statusChecker = new Runnable() {
         @Override
         public void run() {
             while (true) {
@@ -133,7 +141,7 @@ public class Main extends Application {
                 gc.fillOval(0,0, led.getWidth(), led.getHeight());
 
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(5000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -142,7 +150,14 @@ public class Main extends Application {
 
         private boolean checkStatus() {
             // do shell script "ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}" with administrator privileges
-            // TODO
+            try {
+                Process p = Runtime.getRuntime().exec("ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}");
+                BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                String line = r.readLine();
+                System.out.println(line);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
             return false;
         }
     };
@@ -204,7 +219,7 @@ public class Main extends Application {
 
     private void connect() {
         try {
-            Runtime.getRuntime().exec("osascript -e \"do shell script \\\"exec pppd call pptp >/dev/null 2>&1 &\\\" with administrator privileges\"");
+            Runtime.getRuntime().exec("exec pppd call pptp >/dev/null 2>&1 &");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -212,7 +227,7 @@ public class Main extends Application {
 
     private void disconnect() {
         try {
-            Runtime.getRuntime().exec("osascript -e \"do shell script \\\"exec kill -HUP `cat /var/run/ppp0.pid` >/dev/null 2>&1 &\\\" with administrator privileges\"");
+            Runtime.getRuntime().exec("exec kill -HUP `cat /var/run/ppp0.pid` >/dev/null 2>&1 &");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

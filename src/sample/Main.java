@@ -16,7 +16,6 @@ import java.lang.reflect.Field;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.List;
-import java.util.Scanner;
 
 public class Main extends Application {
 
@@ -177,7 +176,7 @@ public class Main extends Application {
 
     private void handleConnection(Event e) {
         disableFields(true);
-        String config = genrateConfig();
+        String config = generateConfig();
         saveConfig(config);
 
         connect();
@@ -218,7 +217,7 @@ public class Main extends Application {
         password.setDisable(setting);
     }
 
-    private String genrateConfig() {
+    private String generateConfig() {
         ConfigBuilder b = new ConfigBuilder();
         b.remoteaddress = serverName.getText();
         b.user = username.getText();

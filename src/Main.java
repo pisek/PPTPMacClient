@@ -59,17 +59,18 @@ public class Main extends Application {
         boolean nodetach = true;
         boolean defaultroute = true;
         boolean usepeerdns = true;
+        boolean debug = true;
 
         String build() {
-            StringBuilder sb = new StringBuilder("debug\n");
+            StringBuilder sb = new StringBuilder();
             for (Field f : this.getClass().getDeclaredFields()) {
                 try {
                     if (f.getAnnotatedType().getType().equals(boolean.class)) {
                         if (f.getBoolean(this)) {
-                            sb.append("    ").append(f.getName().replace('_', '-')).append('\n');
+                            sb.append(f.getName().replace('_', '-')).append('\n');
                         }
                     } else if (f.get(this) != null) {
-                        sb.append("    ").append(f.getName().replace('_', '-')).append(' ').append(f.get(this)).append('\n');
+                        sb.append(f.getName().replace('_', '-')).append(' ').append(f.get(this)).append('\n');
                     }
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
@@ -151,8 +152,11 @@ public class Main extends Application {
         private boolean checkStatus() {
             // do shell script "ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}" with administrator privileges
             try {
-                Process p = Runtime.getRuntime().exec("ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}");
+
+
+                Process p = Runtime.getRuntime().exec("osascript -e \"do shell script \\\"ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}\\\" with administrator privileges\"");
                 BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                while (r.readLine() == null);
                 String line = r.readLine();
                 System.out.println(line);
             } catch (IOException e) {

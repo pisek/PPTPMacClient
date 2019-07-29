@@ -152,9 +152,7 @@ public class Main extends Application {
         private boolean checkStatus() {
             // do shell script "ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}" with administrator privileges
             try {
-
-
-                Process p = Runtime.getRuntime().exec("osascript -e \"do shell script \\\"ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}\\\" with administrator privileges\"");
+                Process p = Runtime.getRuntime().exec("ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}");
                 BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
                 while (r.readLine() == null);
                 String line = r.readLine();

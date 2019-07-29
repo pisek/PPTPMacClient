@@ -1,37 +1,28 @@
-import javafx.application.Application;
-import javafx.event.Event;
-import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.PasswordField;
-import javafx.scene.control.TextField;
-import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.GridPane;
-import javafx.scene.paint.Color;
-import javafx.stage.Stage;
-
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.io.*;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Scanner;
 
-public class Main extends Application {
+public class Main {
 
     private static final String CONFIG_PATH = "/etc/ppp/peers/pptp";
-//    private static final String CONFIG_PATH = "C:\\TEMP\\test.txt";
+    private static final String LOG_PATH = "/tmp/ppp.log";
     private static final String LABEL_CONNECTED = "Connected";
     private static final String LABEL_DISCONNECTED = "Disconnected";
+    private static final String BUTTON_CONNECT = "Connect";
+    private static final String BUTTON_DISCONNECT = "Disconnect";
 
     private static class ConfigBuilder {
         String remoteaddress = null;
         String user = null;
         String password = null;
         String ms_dns = "8.8.8.8";
-        String logfile = "/tmp/ppp.log";
+        String logfile = LOG_PATH;
         String plugin = "PPTP.ppp";
         Integer redialcount = 1;
         Integer redialtimer = 5;
@@ -81,17 +72,17 @@ public class Main extends Application {
     }
 
     public static void main(String[] args) throws Exception {
-        Runnable sc = new Main().statusChecker;
-        Class<? extends Runnable> aClass = sc.getClass();
-        Method checkStatus = aClass.getDeclaredMethod("checkStatus");
-        checkStatus.setAccessible(true);
-        checkStatus.invoke(sc);
-//        if (!new File(CONFIG_PATH).canWrite()) {
-//            elevate();
-//            System.exit(0);
-//        } else {
-//            launch(args);
-//        }
+//        Runnable sc = new Main().statusChecker;
+//        Class<? extends Runnable> aClass = sc.getClass();
+//        Method checkStatus = aClass.getDeclaredMethod("checkStatus");
+//        checkStatus.setAccessible(true);
+//        checkStatus.invoke(sc);
+        if (!new File(CONFIG_PATH).canWrite()) {
+            elevate();
+            System.exit(0);
+        } else {
+            new Main().start();
+        }
     }
 
     private static void elevate() throws IOException, URISyntaxException {
@@ -119,30 +110,24 @@ public class Main extends Application {
                 Main.class.getName()));
     }
 
-    private TextField serverName = new TextField();
-    private TextField username = new TextField();
-    private PasswordField password = new PasswordField();
-    private Button button = new Button("Connect");
+    private JTextField serverName = new JTextField();
+    private JTextField username = new JTextField();
+    private JPasswordField password = new JPasswordField();
+    private JButton button = new JButton("wait");
 
-    private Label statusLabel = new Label("Disconnected");
-    private Canvas led = new Canvas(20.0, 20.0) {{
-        GraphicsContext gc = this.getGraphicsContext2D();
-        gc.setFill(Color.RED);
-        gc.fillOval(0,0, getWidth(), getHeight());
-    }};
+    private JLabel statusLabel = new JLabel();
     private boolean connected = false;
     Runnable statusChecker = new Runnable() {
+        private boolean stop = false;
         @Override
         public void run() {
-            while (true) {
+            while (!stop) {
                 connected = checkStatus();
                 statusLabel.setText(connected ? LABEL_CONNECTED : LABEL_DISCONNECTED);
-                GraphicsContext gc = led.getGraphicsContext2D();
-                gc.setFill(connected ? Color.GREEN : Color.RED);
-                gc.fillOval(0,0, led.getWidth(), led.getHeight());
-
+                switchButton(!connected);
+                enableFields(!connected);
                 try {
-                    Thread.sleep(5000);
+                    Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -150,36 +135,48 @@ public class Main extends Application {
         }
 
         private boolean checkStatus() {
-            // do shell script "ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}" with administrator privileges
+            boolean isConnected = false;
             try {
-                Process p = Runtime.getRuntime().exec("ps aux|grep '[p]ppd'|wc -l|awk {'print $1'}");
-                BufferedReader r = new BufferedReader(new InputStreamReader(p.getInputStream()));
-                while (r.readLine() == null);
-                String line = r.readLine();
-                System.out.println(line);
-            } catch (IOException e) {
+                Process p = Runtime.getRuntime().exec("ps aux");
+                p.waitFor();
+                isConnected = new Scanner(p.getInputStream()).findAll("[p]ppd").count() != 0;
+            } catch (IOException | InterruptedException e) {
                 throw new RuntimeException(e);
             }
-            return false;
+            return isConnected;
+        }
+
+        public void stop() {
+            this.stop = true;
         }
     };
 
-    @Override
-    public void start(Stage primaryStage) throws Exception {
+    private void start() {
 
         readConfig();
+        enableFields(false);
 
-        GridPane root = new GridPane();
-        button.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleConnection);
-        root.addRow(0, new Label("Server: "), serverName);
-        root.addRow(1, new Label("Username: "), username);
-        root.addRow(2, new Label("Password: "), password);
-        root.add(button, 1, 3);
+        JFrame root = new JFrame("PPTP Mac Client");
+        button.addActionListener(this::handleConnection);
+        root.setLayout(new GridLayout(5, 2, 5, 5));
+        root.add(new JLabel("Server: "));
+        root.add(serverName);
+        root.add(new JLabel("Username: "));
+        root.add(username);
+        root.add(new JLabel("Password: "));
+        root.add(password);
+        root.add(new JPanel());
+        root.add(button);
+        button.setEnabled(false);
 
-        root.addRow(4, new Label("Status: "), new GridPane() {{addRow(0, led, statusLabel);}});
-        primaryStage.setTitle("PPTP Mac Client");
-        primaryStage.setScene(new Scene(root, 250, 150));
-        primaryStage.show();
+        root.add(new JLabel("Status: "));
+        root.add(statusLabel);
+
+        root.setSize(200, 200);
+        root.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+        root.setVisible(true);
+
+        new Thread(statusChecker).start();
     }
 
     private void readConfig() {
@@ -201,22 +198,34 @@ public class Main extends Application {
         }
     }
 
-    private void handleConnection(Event e) {
-        disableFields(true);
+    private void handleConnection(ActionEvent e) {
+        enableFields(false);
         String config = generateConfig();
         saveConfig(config);
 
         connect();
 
-        button.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleDisconnection);
+        switchButton(false);
     }
 
-    private void handleDisconnection(Event e) {
+    private void handleDisconnection(ActionEvent e) {
         disconnect();
 
-        disableFields(false);
+        enableFields(true);
 
-        button.addEventHandler(MouseEvent.MOUSE_CLICKED, this::handleConnection);
+        switchButton(true);
+    }
+
+    private void switchButton(boolean toConnect) {
+        button.removeActionListener(button.getActionListeners()[0]);
+        button.setEnabled(true);
+        if (toConnect) {
+            button.setText(BUTTON_CONNECT);
+            button.addActionListener(this::handleConnection);
+        } else {
+            button.setText(BUTTON_DISCONNECT);
+            button.addActionListener(this::handleDisconnection);
+        }
     }
 
     private void connect() {
@@ -244,10 +253,10 @@ public class Main extends Application {
         }
     }
 
-    private void disableFields(boolean setting) {
-        serverName.setDisable(setting);
-        username.setDisable(setting);
-        password.setDisable(setting);
+    private void enableFields(boolean setting) {
+        serverName.setEnabled(setting);
+        username.setEnabled(setting);
+        password.setEnabled(setting);
     }
 
     private String generateConfig() {
